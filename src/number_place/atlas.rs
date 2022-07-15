@@ -46,21 +46,55 @@ impl Processor {
         value: Value,
         place: Place,
     ) -> Result<HashSet<(Value, Place)>, EntropyConflictError> {
+        let mut remaining_sets = HashSet::new();
         macro_rules! entropy {
             ($place: expr) => {
                 self.0[$place.x][$place.y]
-            }
+            };
+        }
+        /// 与えられた一列(y_line)、一行(x_line)、一区画(square)
+        /// (:$one_depend_set)のうちで、与えられた$valueが唯一のものかどうか。
+        macro_rules! is_only {
+            ($value :expr, $one_depend_set: expr) => {{
+                let one_depend_set: &HashSet<Place> = $one_depend_set;
+                let value: &Value = $value;
+                let mut is_only = true;
+                for place in one_depend_set {
+                    let entropy = &entropy!(&place);
+                    if entropy.is_possible(value) {
+                        is_only = false;
+                        break;
+                    }
+                }
+                is_only
+            }};
+        }
+        macro_rules! search_uniqueness {
+            ($value: expr, $place: expr) => {{
+                let disabled_value: &Value = $value;
+                let changing_place: &Place = $place;
+                for affected_place in changing_place.dependencies().into_all() {
+                    let dependencies = affected_place.dependencies();
+                    let (x_line, y_line, square) = (
+                        dependencies.x_line(),
+                        dependencies.y_line(),
+                        dependencies.square(),
+                    );
+                    if is_only!(disabled_value, x_line)
+                        || is_only!(disabled_value, y_line)
+                        || is_only!(disabled_value, square)
+                    {
+                        remaining_sets.insert((disabled_value.clone(), affected_place.clone()));
+                    }
+                }
+            }};
         }
         // 指定されたセルのエントロピーを収束させる。
-        entropy!(&place).try_converge(&value)?;
-        // ↑の収束時に削除された可能性についてdisable_valueを行なうこと。
-        /*
-        macro_rules! disable_value {
-            ($place: expr, $value: expr) => {{}};
+        let disabled_values = entropy!(&place).try_converge(&value)?;
+        for disabled_value in disabled_values.iter() {
+            let changing_place = &place;
+            search_uniqueness!(disabled_value, changing_place);
         }
-        */
-        let mut remaining_sets = HashSet::new();
-
         // 直接関係のあるセルから可能性を削除していく。
         for place_related_1 in place.dependencies().into_all() {
             if !entropy!(place_related_1).is_converged() {
@@ -72,41 +106,9 @@ impl Processor {
                     // place_related_2のある列・行・区画のいずれかの中で唯一のものになった場合、
                     // その可能性はその値に収束するべきものであると見做す
                     // (同じ行・列・区画で、他のセルに入らないがこのセルにのみ入る場合はその値が入ると見做す)。
-                    for place_related_2 in place_related_1.dependencies().into_all() {
-                        let dependencies = place_related_2.dependencies();
-                        let (x_line, y_line, square) = (
-                            dependencies.x_line(),
-                            dependencies.y_line(),
-                            dependencies.square(),
-                        );
-                        /// 与えられた一列(y_line)、一行(x_line)、一区画(square)
-                        /// (:$one_depend_set)のうちで、与えられた$valueが唯一のものかどうか。
-                        macro_rules! is_only {
-                            ($value :expr, $one_depend_set: expr) => {{
-                                let one_depend_set: &HashSet<Place> = $one_depend_set;
-                                let value: &Value = $value;
-                                let mut is_only = true;
-                                for place in one_depend_set {
-                                    let entropy = &entropy!(&place);
-                                    if entropy.is_possible(value) {
-                                        is_only = false;
-                                        break;
-                                    }
-                                }
-                                is_only
-                            }};
-                        }
-                        for possible_values in entropy!(&place_related_2).to_owned() {
-                            if is_only!(&possible_values, x_line)
-                                || is_only!(&possible_values, y_line)
-                                || is_only!(&possible_values, square)
-                            {
-                                remaining_sets
-                                    .insert((possible_values.clone(), place_related_2.clone()));
-                                break;
-                            }
-                        }
-                    }
+                    let changing_place = &place_related_1;
+                    let disabled_value = &value;
+                    search_uniqueness!(disabled_value, changing_place);
                 }
 
                 // 仮に今回の入力によって関係するセルの可能性が収束した場合
