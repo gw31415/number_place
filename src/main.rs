@@ -24,7 +24,7 @@ fn main() {
                     eprintln!("{error} @{place}");
                     panic!("ルール違反が検出されました。");
                 }
-                println!("STEP{:2}: {}", char_count, processor.entropy_amount());
+                println!("STEP {:2}: {}", char_count, processor.entropy_amount());
             } else {
                 panic!("入力形式が正しくありません。");
             }

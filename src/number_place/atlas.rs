@@ -8,9 +8,6 @@ use std::collections::HashSet;
 pub struct Processor([[Entropy; 9]; 9]);
 
 impl Processor {
-    fn get(&self, place: &Place) -> &Entropy {
-        &self.0[place.x][place.y]
-    }
     /// 現在確認できたエントロピーの総量を返します。
     pub fn entropy_amount(&self) -> f64 {
         let mut count = 1f64;
@@ -49,8 +46,13 @@ impl Processor {
         value: Value,
         place: Place,
     ) -> Result<HashSet<(Value, Place)>, EntropyConflictError> {
+        macro_rules! entropy {
+            ($place: expr) => {
+                self.0[$place.x][$place.y]
+            }
+        }
         // 指定されたセルのエントロピーを収束させる。
-        self.0[place.x][place.y].try_converge(&value)?;
+        entropy!(&place).try_converge(&value)?;
         // ↑の収束時に削除された可能性についてdisable_valueを行なうこと。
         /*
         macro_rules! disable_value {
@@ -61,13 +63,8 @@ impl Processor {
 
         // 直接関係のあるセルから可能性を削除していく。
         for place_related_1 in place.dependencies().into_all() {
-            macro_rules! entropy_at_place_related_1 {
-                () => {
-                    self.0[place_related_1.x][place_related_1.y]
-                };
-            }
-            if !entropy_at_place_related_1!().is_converged() {
-                if entropy_at_place_related_1!().disable(&value)? {
+            if !entropy!(place_related_1).is_converged() {
+                if entropy!(place_related_1).disable(&value)? {
                     // 可能性削除ができたということは、アトラスに変化があったということ。
                     // その結果、削除したセル(place_related_1)に関係するセル
                     // (つまり入力を受けたセルから見て2次的に関係のあるセル: place_related_2)
@@ -90,7 +87,7 @@ impl Processor {
                                 let value: &Value = $value;
                                 let mut is_only = true;
                                 for place in one_depend_set {
-                                    let entropy = self.get(place);
+                                    let entropy = &entropy!(&place);
                                     if entropy.is_possible(value) {
                                         is_only = false;
                                         break;
@@ -99,7 +96,7 @@ impl Processor {
                                 is_only
                             }};
                         }
-                        for possible_values in self.get(&place_related_2).to_owned() {
+                        for possible_values in entropy!(&place_related_2).to_owned() {
                             if is_only!(&possible_values, x_line)
                                 || is_only!(&possible_values, y_line)
                                 || is_only!(&possible_values, square)
@@ -113,7 +110,7 @@ impl Processor {
                 }
 
                 // 仮に今回の入力によって関係するセルの可能性が収束した場合
-                if let Some(value) = self.get(&place_related_1).check_convergence() {
+                if let Some(value) = entropy!(&place_related_1).check_convergence() {
                     remaining_sets.insert((value, place_related_1));
                 }
             }
