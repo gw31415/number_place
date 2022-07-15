@@ -18,6 +18,17 @@ mod test {
         let entropy = Entropy::new_converged(Value::new(8).unwrap());
         assert_eq!(entropy.len(), 1);
     }
+    #[test]
+    fn new_try_converge() {
+        let mut entropy = Entropy::new();
+        entropy.try_converge(&Value::ONE).unwrap();
+        assert_eq!(entropy.len(), 1);
+        let mut entropy = Entropy::new();
+        entropy.disable(&Value::ONE).unwrap();
+        entropy.try_converge(&Value::ONE).unwrap_err();
+        entropy.try_converge(&Value::TWO).unwrap();
+        assert_eq!(entropy.len(), 1);
+    }
 }
 
 /// そのセルでの値の可能性を表します。
@@ -42,12 +53,30 @@ impl Entropy {
     }
 
     /// 指定された値に収束させます。
-    pub fn try_converge(&mut self, value: &Value) -> Result<(), EntropyConflictError> {
+    pub fn try_converge(&mut self, value: &Value) -> Result<HashSet<Value>, EntropyConflictError> {
         if !self.is_possible(value) {
             Err(EntropyConflictError(Some((value.to_owned(), self.clone()))))
         } else {
+            let mut others = HashSet::with_capacity(self.len() - 1);
+            match &self.0 {
+                Some(s) => {
+                    for added_value in s.iter() {
+                        if added_value != value {
+                            others.insert(added_value.to_owned());
+                        }
+                    }
+                }
+                None => {
+                    for value_index in 1u8..=9 {
+                        let added_value = unsafe { Value::new_unchecked(value_index) };
+                        if &added_value != value {
+                            others.insert(added_value.to_owned());
+                        }
+                    }
+                }
+            }
             *self = Entropy::new_converged(value.clone());
-            Ok(())
+            Ok(others)
         }
     }
 
