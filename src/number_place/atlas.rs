@@ -110,6 +110,11 @@ impl Processor {
                 })?
             {
                 search_uniqueness_around!(&value, &related_place);
+
+                // 仮にこの削除によって関係するセルの可能性の数が1つになった場合
+                if let Some(value) = entropy!(&related_place).check_convergence() {
+                    remaining_sets.insert((value, related_place));
+                }
             }
         }
         Ok(remaining_sets)
