@@ -22,7 +22,7 @@ impl Processor {
         &self.0
     }
     /// 指定されたセルのエントロピーを収束させます。
-    pub fn input(&mut self, value: Value, place: Place) -> Result<(), EntropyConflictError> {
+    pub fn input(&mut self, value: Value, place: Place) -> Result<(), RuleViolationError> {
         let mut remaining_sets = HashSet::new();
         remaining_sets.insert((value, place));
         while !remaining_sets.is_empty() {
@@ -44,7 +44,7 @@ impl Processor {
         &mut self,
         value: Value,
         place: Place,
-    ) -> Result<HashSet<(Value, Place)>, EntropyConflictError> {
+    ) -> Result<HashSet<(Value, Place)>, RuleViolationError> {
         let mut remaining_sets = HashSet::new();
         macro_rules! entropy {
             ($place: expr) => {
@@ -93,17 +93,41 @@ impl Processor {
             }};
         }
         // 指定されたセルのエントロピーを収束させる。
-        let disabled_values = entropy!(&place).try_converge(&value)?;
+        let disabled_values =
+            entropy!(&place)
+                .try_converge(&value)
+                .map_err(|err| RuleViolationError {
+                    conflict: err,
+                    place: place.to_owned(),
+                })?;
         for disabled_value in disabled_values {
             // 削除された可能性について探索
             search_uniqueness_around!(&disabled_value, &place);
         }
         // 直接関係のあるセルから可能性を削除していく。
         for related_place in place.dependencies().into_all() {
-            if entropy!(related_place).disable(&value)? {
+            if entropy!(related_place)
+                .disable(&value)
+                .map_err(|err| RuleViolationError {
+                    conflict: err,
+                    place: place.to_owned(),
+                })?
+            {
                 search_uniqueness_around!(&value, &related_place);
             }
         }
         Ok(remaining_sets)
+    }
+}
+
+pub struct RuleViolationError {
+    conflict: EntropyConflictError,
+    place: Place,
+}
+
+impl std::fmt::Display for RuleViolationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.conflict.fmt(f)?;
+        write!(f, " @{}", self.place)
     }
 }

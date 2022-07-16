@@ -22,7 +22,7 @@ fn main() {
             if let Some(value) = Value::new((c - b'0') as u32) {
                 let place = Place::new(x, y).unwrap();
                 if let Err(error) = processor.input(value, place.clone()) {
-                    eprintln!("{error} @{place}");
+                    eprintln!("{error}");
                     panic!("ルール違反が検出されました。");
                 }
                 println!("STEP {:2}: {}", char_count, processor.entropy_amount());

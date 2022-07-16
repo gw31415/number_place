@@ -117,6 +117,7 @@ impl Iterator for IterValue {
 #[derive(Clone, Debug)]
 pub struct Entropy(u32);
 impl Entropy {
+    const NEVER: Entropy = Entropy(0);
     /// エントロピーの大きさを返します。
     pub fn len(&self) -> u32 {
         self.0.count_ones()
@@ -145,8 +146,8 @@ impl Entropy {
             self.0 -= value.0;
             if self.0 == 0 {
                 Err(EntropyConflictError {
-                    entropy: 0,
-                    value: value.0,
+                    entropy: Entropy::NEVER,
+                    value: value.to_owned(),
                 })
             } else {
                 Ok(true)
@@ -179,8 +180,8 @@ impl Entropy {
             res
         } else {
             Err(EntropyConflictError {
-                value: value.0,
-                entropy: self.0,
+                value: value.to_owned(),
+                entropy: self.to_owned(),
             })
         }
     }
@@ -216,14 +217,12 @@ impl IntoIterator for Entropy {
 // disableの結果、存在するペアがなくなってしまった場合はNoneで指定。
 #[derive(Debug)]
 pub struct EntropyConflictError {
-    value: u32,
-    entropy: u32,
+    value: Value,
+    entropy: Entropy,
 }
 
 impl std::fmt::Display for EntropyConflictError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let entropy = Entropy(self.entropy);
-        let value = Value(self.value);
-        write!(f, "{} <- {}", entropy, value)
+        write!(f, "{} <- {}", self.entropy, self.value)
     }
 }
