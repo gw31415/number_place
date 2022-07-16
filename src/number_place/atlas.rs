@@ -72,6 +72,7 @@ impl Processor {
                             match first {
                                 Some(_) => {
                                     // まだ複数のセルで可能性がある。
+                                    first = None;
                                     break;
                                 },
                                 None => {
@@ -81,13 +82,8 @@ impl Processor {
                             }
                         }
                     }
-                    match first {
-                        Some(unique_place) => {
+                    if let Some(unique_place) = first {
                             remaining_sets.insert((disabled_value.to_owned(), unique_place.to_owned()));
-                        },
-                        None => {
-                            unreachable!();
-                        }
                     }
                 }
             }};
