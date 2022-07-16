@@ -1,22 +1,29 @@
-use super::value::*;
-use std::collections::HashSet;
-
 #[cfg(test)]
 mod test {
     use super::*;
     #[test]
-    fn test_len_disable() {
+    fn len_disable() {
+        let mut len = 9;
         let mut entropy = Entropy::new();
-        assert_eq!(entropy.len(), 9);
-        entropy.disable(&Value::ONE).unwrap();
-        assert_eq!(entropy.len(), 8);
-        entropy.disable(&Value::ONE).unwrap();
-        assert_eq!(entropy.len(), 8);
+        assert_eq!(entropy.len(), len);
+        for i in 1..9 {
+            len -= 1;
+            entropy.disable(&Value::new(i).unwrap()).unwrap();
+            assert_eq!(entropy.len(), len);
+            entropy.disable(&Value::new(i).unwrap()).unwrap();
+            assert_eq!(entropy.len(), len);
+        }
+        entropy.disable(&Value::NINE).unwrap_err();
     }
     #[test]
-    fn new_converged() {
-        let entropy = Entropy::new_converged(Value::new(8).unwrap());
-        assert_eq!(entropy.len(), 1);
+    fn new_converged_is_converged_is_possible() {
+        for i in 1..=9 {
+            let value = &Value::new(i).unwrap();
+            let entropy = Entropy::new_converged(value.clone());
+            assert!(entropy.is_converged());
+            assert_eq!(entropy.len(), 1);
+            assert!(entropy.is_possible(value));
+        }
     }
     #[test]
     fn new_try_converge() {
@@ -31,16 +38,72 @@ mod test {
     }
 }
 
+const MASK: u32 = 0b1111111110;
+
+/// 数独の各セルに入っている値の型です。
+#[derive(PartialEq, Eq, Clone, Hash, PartialOrd, Ord, Debug)]
+pub struct Value(u32);
+impl Value {
+    pub const ONE: Value = Value(0b0000000010);
+    pub const TWO: Value = Value(0b0000000100);
+    pub const THREE: Value = Value(0b0000001000);
+    pub const FOUR: Value = Value(0b0000010000);
+    pub const FIVE: Value = Value(0b0000100000);
+    pub const SIX: Value = Value(0b0001000000);
+    pub const SEVEN: Value = Value(0b0010000000);
+    pub const EIGHT: Value = Value(0b0100000000);
+    pub const NINE: Value = Value(0b1000000000);
+    pub fn new(value: u32) -> Option<Self> {
+        if value > 0 && value <= 9 {
+            Some(unsafe { Self::new_unchecked(value) })
+        } else {
+            None
+        }
+    }
+    pub unsafe fn new_unchecked(value: u32) -> Self {
+        Value(1 << value)
+    }
+}
+
+impl std::fmt::Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.trailing_zeros())
+    }
+}
+
+#[derive(Debug)]
+pub struct IterValue {
+    bits: u32,
+}
+
+impl IterValue {
+    fn new_raw(bits: u32) -> IterValue {
+        IterValue { bits }
+    }
+}
+
+impl Iterator for IterValue {
+    type Item = Value;
+    fn next(&mut self) -> Option<Self::Item> {
+        match Value::new(self.bits.trailing_zeros()) {
+            Some(v) => {
+                self.bits -= v.0;
+                Some(v)
+            }
+            None => None,
+        }
+    }
+}
+
 /// そのセルでの値の可能性を表します。
+// 初期状態はMASK、
+// 否定された可能性がnの場合、(n+1)桁目が0となる。
 #[derive(Clone, Debug)]
-pub struct Entropy(Option<HashSet<Value>>);
+pub struct Entropy(u32);
 impl Entropy {
     /// エントロピーの大きさを返します。
-    pub fn len(&self) -> usize {
-        match &self.0 {
-            Some(s) => s.len(),
-            None => 9,
-        }
+    pub fn len(&self) -> u32 {
+        self.0.count_ones()
     }
     /// 全く収束していない新しいエントロピーを返します。
     pub fn new() -> Self {
@@ -49,136 +112,85 @@ impl Entropy {
 
     /// 新しい収束済みのエントロピーを返します。
     pub fn new_converged(value: Value) -> Self {
-        Entropy(Some(HashSet::from([value])))
-    }
-
-    /// 指定された値に収束させます。
-    pub fn try_converge(&mut self, value: &Value) -> Result<HashSet<Value>, EntropyConflictError> {
-        if !self.is_possible(value) {
-            Err(EntropyConflictError(Some((value.to_owned(), self.clone()))))
-        } else {
-            let mut others = HashSet::with_capacity(self.len() - 1);
-            match &self.0 {
-                Some(s) => {
-                    for added_value in s.iter() {
-                        if added_value != value {
-                            others.insert(added_value.to_owned());
-                        }
-                    }
-                }
-                None => {
-                    for value_index in 1u8..=9 {
-                        let added_value = unsafe { Value::new_unchecked(value_index) };
-                        if &added_value != value {
-                            others.insert(added_value.to_owned());
-                        }
-                    }
-                }
-            }
-            *self = Entropy::new_converged(value.clone());
-            Ok(others)
-        }
+        Entropy(value.0)
     }
 
     /// その値になる可能性があるかどうかを返します。
     pub fn is_possible(&self, value: &Value) -> bool {
-        match &self.0 {
-            Some(s) => s.contains(value),
-            None => true,
+        self.0 & value.0 != 0
+    }
+
+    /// 指定された値の可能性を否定します。
+    /// 既にその値になる可能性がなかった場合はOk(false)を返します。
+    /// 可能性を否定した結果不能となった場合はErr(EntropyConflictError)を返します。
+    /// 不能となったselfは回復しません。
+    pub fn disable(&mut self, value: &Value) -> Result<bool, EntropyConflictError> {
+        if self.is_possible(value) {
+            self.0 -= value.0;
+            if self.0 == 0 {
+                Err(EntropyConflictError {
+                    entropy: 0,
+                    value: value.0,
+                })
+            } else {
+                Ok(true)
+            }
+        } else {
+            Ok(false)
         }
     }
 
     /// 確率が収束しているかどうかを返します。
     pub fn is_converged(&self) -> bool {
-        match &self.0 {
-            Some(s) => s.len() == 1,
-            None => false,
-        }
+        self.len() == 1
     }
 
     /// 確率が収束している場合、その値を返します。
     pub fn check_convergence(&self) -> Option<Value> {
         if self.is_converged() {
-            let hash_set = unsafe {
-                self.0
-                    .as_ref()
-                    .unwrap_unchecked()
-                    .iter()
-                    .next()
-                    .unwrap_unchecked()
-                    .to_owned()
-            };
-            Some(hash_set)
+            Some(Value(self.0))
         } else {
             None
         }
     }
 
-    /// 指定された値の可能性を否定します。
-    pub fn disable(&mut self, value: &Value) -> Result<bool, EntropyConflictError> {
-        match &self.0 {
-            Some(_) => {
-                if self.len() == 1 {
-                    if self.is_possible(value) {
-                        return Err(EntropyConflictError(None));
-                    }
-                    return Ok(false);
-                }
-                Ok(unsafe { self.0.as_mut().unwrap_unchecked() }.remove(value))
-            }
-            None => {
-                let mut base = HashSet::with_capacity(8);
-                for i in 1..=9 {
-                    if i != value.clone().into() {
-                        base.insert(unsafe { Value::new_unchecked(i) });
-                    }
-                }
-                self.0 = Some(base);
-                Ok(true)
-            }
+    /// 指定された値に収束させます。
+    /// 収束した場合は否定された可能性のIterValueを返します。
+    pub fn try_converge(&mut self, value: &Value) -> Result<IterValue, EntropyConflictError> {
+        if self.is_possible(value) {
+            self.0 = value.0;
+            Ok(IterValue::new_raw(self.0 - value.0))
+        } else {
+            Err(EntropyConflictError {
+                value: value.0,
+                entropy: self.0,
+            })
         }
     }
 }
 
 impl Default for Entropy {
     fn default() -> Self {
-        Entropy(None)
+        Entropy(MASK)
     }
 }
 
 impl std::fmt::Display for Entropy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.0.to_owned() {
-            Some(sorted_values) => {
-                write!(f, "[")?;
-                let mut sorted_values = sorted_values.iter().collect::<Vec<_>>();
-                sorted_values.sort();
-                for c in sorted_values {
-                    write!(f, "{}", c)?;
-                }
-                write!(f, "]")
-            }
-            None => {
-                write!(f, "[123456789]")
-            }
+        write!(f, "[")?;
+        let iter = self.clone().into_iter();
+        for v in iter {
+            write!(f, "{v}")?;
         }
+        write!(f, "]")
     }
 }
 
 impl IntoIterator for Entropy {
     type Item = Value;
-    type IntoIter = std::collections::hash_set::IntoIter<Self::Item>;
+    type IntoIter = IterValue;
     fn into_iter(self) -> Self::IntoIter {
-        match self.0 {
-            Some(s) => s.into_iter(),
-            None => {
-                let mut hash_set = HashSet::with_capacity(9);
-                for i in 1..=9 {
-                    hash_set.insert(unsafe { Value::new_unchecked(i) });
-                }
-                hash_set.into_iter()
-            }
-        }
+        IterValue::new_raw(self.0)
     }
 }
 
@@ -186,13 +198,15 @@ impl IntoIterator for Entropy {
 // 競合した値とエントロピーのペアが存在する場合はSome(Value, Entropy)の形式で指定。
 // disableの結果、存在するペアがなくなってしまった場合はNoneで指定。
 #[derive(Debug)]
-pub struct EntropyConflictError(Option<(Value, Entropy)>);
+pub struct EntropyConflictError {
+    value: u32,
+    entropy: u32,
+}
 
 impl std::fmt::Display for EntropyConflictError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.0 {
-            Some((value, entropy)) => write!(f, "{} <- {}", entropy, value),
-            None => write!(f, "[]"),
-        }
+        let entropy = Entropy(self.entropy);
+        let value = Value(self.value);
+        write!(f, "{} <- {}", entropy, value)
     }
 }

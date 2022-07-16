@@ -1,6 +1,5 @@
 use super::entropy::*;
 use super::place::*;
-use super::value::*;
 use std::collections::HashSet;
 
 /// 数独の問題を解く構造体です。
@@ -91,9 +90,9 @@ impl Processor {
         }
         // 指定されたセルのエントロピーを収束させる。
         let disabled_values = entropy!(&place).try_converge(&value)?;
-        for disabled_value in disabled_values.iter() {
+        for disabled_value in disabled_values {
             let changing_place = &place;
-            search_uniqueness!(disabled_value, changing_place);
+            search_uniqueness!(&disabled_value, changing_place);
         }
         // 直接関係のあるセルから可能性を削除していく。
         for place_related_1 in place.dependencies().into_all() {
