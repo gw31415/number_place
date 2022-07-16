@@ -121,6 +121,7 @@ impl Processor {
     }
 }
 
+/// ルール違反が検出されたエラー
 pub struct RuleViolationError {
     conflict: EntropyConflictError,
     place: Place,
