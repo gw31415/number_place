@@ -23,13 +23,25 @@ mod test {
             assert!(entropy.is_converged());
             assert_eq!(entropy.len(), 1);
             assert!(entropy.is_possible(value));
+            for j in 1..=9 {
+                if j != i {
+                    assert!(!entropy.is_possible(&Value::new(j).unwrap()));
+                }
+            }
         }
     }
     #[test]
     fn new_try_converge() {
-        let mut entropy = Entropy::new();
-        entropy.try_converge(&Value::ONE).unwrap();
-        assert_eq!(entropy.len(), 1);
+        for i in 1..=9 {
+            let test_value = Value::new(i).unwrap();
+            let mut entropy = Entropy::new();
+            let rest = entropy.try_converge(&test_value).unwrap();
+            assert_eq!(entropy.len(), 1);
+            assert_eq!(rest.len(), 8);
+            for rest_value in rest {
+                assert_ne!(rest_value, test_value);
+            }
+        }
         let mut entropy = Entropy::new();
         entropy.disable(&Value::ONE).unwrap();
         entropy.try_converge(&Value::ONE).unwrap_err();
@@ -71,12 +83,16 @@ impl std::fmt::Display for Value {
     }
 }
 
+/// Vauleの重複のない集合です。
 #[derive(Debug)]
 pub struct IterValue {
     bits: u32,
 }
 
 impl IterValue {
+    pub fn len(&self) -> u32 {
+        self.bits.count_ones()
+    }
     fn new_raw(bits: u32) -> IterValue {
         IterValue { bits }
     }
@@ -158,8 +174,9 @@ impl Entropy {
     /// 収束した場合は否定された可能性のIterValueを返します。
     pub fn try_converge(&mut self, value: &Value) -> Result<IterValue, EntropyConflictError> {
         if self.is_possible(value) {
+            let res = Ok(IterValue::new_raw(self.0 - value.0));
             self.0 = value.0;
-            Ok(IterValue::new_raw(self.0 - value.0))
+            res
         } else {
             Err(EntropyConflictError {
                 value: value.0,
