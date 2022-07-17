@@ -58,35 +58,30 @@ impl Processor {
             ($disabled_value: expr, $changing_place: expr) => {{
                 let disabled_value: &Value = $disabled_value;
                 let changing_place: &Place = $changing_place;
-                let dependencies = changing_place.dependencies();
-                for block in [
-                    dependencies.x_line(),
-                    dependencies.y_line(),
-                    dependencies.square(),
-                ] {
-                    let mut first: Option<&Place> = None;
+                let Dependencies{x,y,s} = changing_place.dependencies();
+                for block in [x,y,s] {
+                    let mut first: Option<Place> = None;
                     for affected_place in block {
                         // 与えられた一列(y_line)、一行(x_line)、一区画(square)
                         // (:block)のうちで、与えられた$valueが唯一のものを探す。
-                        if affected_place == changing_place {
-                            continue;
-                        }
-                        if entropy!(affected_place).is_possible(disabled_value) {
-                            match first {
-                                Some(_) => {
-                                    // まだ複数のセルで可能性がある。
-                                    first = None;
-                                    break;
-                                },
-                                None => {
-                                    // 可能性のある最初のセル
-                                    first = Some(affected_place);
+                        if &affected_place != changing_place {
+                            if entropy!(affected_place).is_possible(disabled_value) {
+                                match first {
+                                    Some(_) => {
+                                        // まだ複数のセルで可能性がある。
+                                        first = None;
+                                        break;
+                                    },
+                                    None => {
+                                        // 可能性のある最初のセル
+                                        first = Some(affected_place);
+                                    }
                                 }
                             }
                         }
                     }
                     if let Some(unique_place) = first {
-                            remaining_sets.insert((disabled_value.to_owned(), unique_place.to_owned()));
+                        remaining_sets.insert((disabled_value.to_owned(), unique_place));
                     }
                 }
             }};
@@ -104,19 +99,21 @@ impl Processor {
             search_uniqueness_around!(&disabled_value, &place);
         }
         // 直接関係のあるセルから可能性を削除していく。
-        for related_place in place.dependencies().into_all() {
-            if entropy!(related_place)
-                .disable(&value)
-                .map_err(|err| RuleViolationError {
-                    conflict: err,
-                    place: place.to_owned(),
-                })?
-            {
-                search_uniqueness_around!(&value, &related_place);
+        for related_place in place.dependencies() {
+            if related_place != place {
+                if entropy!(related_place)
+                    .disable(&value)
+                    .map_err(|err| RuleViolationError {
+                        conflict: err,
+                        place: place.to_owned(),
+                    })?
+                {
+                    search_uniqueness_around!(&value, &related_place);
 
-                // 仮にこの削除によって関係するセルの可能性の数が1つになった場合
-                if let Some(value) = entropy!(&related_place).check_convergence() {
-                    remaining_sets.insert((value, related_place));
+                    // 仮にこの削除によって関係するセルの可能性の数が1つになった場合
+                    if let Some(value) = entropy!(&related_place).check_convergence() {
+                        remaining_sets.insert((value, related_place));
+                    }
                 }
             }
         }

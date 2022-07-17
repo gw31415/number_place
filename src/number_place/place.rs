@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 /// 数独上の位置を表します。
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct Place(usize);
@@ -25,21 +24,42 @@ impl Place {
     }
     /// そのPlaceに直接的に影響のあるPlaceを返します。
     pub fn dependencies(&self) -> Dependencies {
-        let mut depends = Dependencies::new();
-        let (x, y) = (self.x(), self.y());
-        let keystone = ((x / 3) * 3, (y / 3) * 3);
-        for i in 0..9 {
-            depends.x.insert(unsafe { Place::new_unchecked(x, i) });
-            depends.y.insert(unsafe { Place::new_unchecked(i, y) });
-            depends
-                .s
-                .insert(unsafe { Place::new_unchecked(i / 3 + keystone.0, i % 3 + keystone.1) });
+        Dependencies {
+            x: { Block(self.0 / 9 * 9, BlockContext::XLine) },
+            y: { Block(self.0 % 9, BlockContext::YLine) },
+            s: {
+                let (x, y) = (self.x(), self.y());
+                Block((y / 3) * 27 + ((x / 3) * 3), BlockContext::Square)
+            },
         }
-        // 自身は削除する
-        depends.s.remove(self);
-        depends.x.remove(self);
-        depends.y.remove(self);
-        depends
+    }
+}
+
+impl std::fmt::Display for Place {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.x(), self.y())
+    }
+}
+
+pub struct Dependencies {
+    /// 3x3の領域の依存セルを返します。
+    pub s: Block,
+    /// 横の1行のラインの依存セルを返します。
+    pub x: Block,
+    /// 横の1行のラインの依存セルを返します。
+    pub y: Block,
+}
+
+impl Iterator for Dependencies {
+    type Item = Place;
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(p) = self.s.next() {
+            Some(p)
+        } else if let Some(p) = self.x.next() {
+            Some(p)
+        } else {
+            self.y.next()
+        }
     }
 }
 
@@ -66,7 +86,7 @@ impl Iterator for Block {
                 }
                 Square => {
                     next_value += if next_value % 3 == 2 {
-                        if (next_value / 3) % 3 == 2 {
+                        if (next_value / 9) % 3 == 2 {
                             // 今の値が最後の値の時
                             self.1 = Finished;
                         }
@@ -94,54 +114,5 @@ impl Iterator for Block {
                 }
             },
         )))
-    }
-}
-
-impl std::fmt::Display for Place {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {})", self.x(), self.y())
-    }
-}
-
-pub struct Dependencies {
-    s: HashSet<Place>,
-    x: HashSet<Place>,
-    y: HashSet<Place>,
-}
-
-impl Dependencies {
-    fn new() -> Self {
-        Dependencies {
-            s: Default::default(),
-            x: Default::default(),
-            y: Default::default(),
-        }
-    }
-
-    /// 3x3の領域の依存セルを返します。
-    pub fn square(&self) -> &HashSet<Place> {
-        &self.s
-    }
-
-    /// 横の1行のラインの依存セルを返します。
-    pub fn x_line(&self) -> &HashSet<Place> {
-        &self.x
-    }
-
-    /// 横の1行のラインの依存セルを返します。
-    pub fn y_line(&self) -> &HashSet<Place> {
-        &self.y
-    }
-
-    /// 全ての依存セルを統合して返します。
-    pub fn into_all(self) -> HashSet<Place> {
-        let Self { s: mut res, x, y } = self;
-        for i in x {
-            res.insert(i);
-        }
-        for i in y {
-            res.insert(i);
-        }
-        res
     }
 }
