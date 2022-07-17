@@ -83,7 +83,7 @@ impl std::fmt::Display for Value {
     }
 }
 
-/// Vauleの重複のない集合です。
+/// Valueの重複のない集合です。
 #[derive(Debug, Clone)]
 pub struct IterValue {
     bits: u32,
