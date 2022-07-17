@@ -1,6 +1,5 @@
 use super::entropy::*;
 use super::place::*;
-use std::collections::HashSet;
 
 /// 数独の問題を解く構造体です。
 #[derive(Default)]
@@ -23,14 +22,14 @@ impl Processor {
     }
     /// 指定されたセルのエントロピーを収束させます。
     pub fn input(&mut self, value: Value, place: Place) -> Result<(), RuleViolationError> {
-        let mut remaining_sets = HashSet::new();
-        remaining_sets.insert((value, place));
+        let mut remaining_sets = Vec::new();
+        remaining_sets.push((value, place));
         while !remaining_sets.is_empty() {
             let iter = remaining_sets;
             remaining_sets = Default::default();
             for (value, place) in iter {
                 for remaining_set in self.inner_input(value, place)? {
-                    remaining_sets.insert(remaining_set);
+                    remaining_sets.push(remaining_set);
                 }
             }
         }
@@ -44,8 +43,8 @@ impl Processor {
         &mut self,
         value: Value,
         place: Place,
-    ) -> Result<HashSet<(Value, Place)>, RuleViolationError> {
-        let mut remaining_sets = HashSet::new();
+    ) -> Result<Vec<(Value, Place)>, RuleViolationError> {
+        let mut remaining_sets = Vec::new();
         macro_rules! entropy {
             ($place: expr) => {
                 self.0[$place.x()][$place.y()]
@@ -81,7 +80,7 @@ impl Processor {
                         }
                     }
                     if let Some(unique_place) = first {
-                        remaining_sets.insert((disabled_value.to_owned(), unique_place));
+                        remaining_sets.push((disabled_value.to_owned(), unique_place));
                     }
                 }
             }};
@@ -112,7 +111,7 @@ impl Processor {
 
                     // 仮にこの削除によって関係するセルの可能性の数が1つになった場合
                     if let Some(value) = entropy!(&related_place).check_convergence() {
-                        remaining_sets.insert((value, related_place));
+                        remaining_sets.push((value, related_place));
                     }
                 }
             }
