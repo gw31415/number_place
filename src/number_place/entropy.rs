@@ -50,11 +50,13 @@ mod test {
     }
 }
 
-const MASK: u32 = 0b1111111110;
+pub type BITS = u32;
+
+const MASK: BITS = 0b1111111110;
 
 /// 数独の各セルに入っている値の型です。
 #[derive(PartialEq, Eq, Clone, Hash, PartialOrd, Ord, Debug)]
-pub struct Value(u32);
+pub struct Value(BITS);
 impl Value {
     pub const ONE: Value = Value(0b0000000010);
     pub const TWO: Value = Value(0b0000000100);
@@ -65,14 +67,14 @@ impl Value {
     pub const SEVEN: Value = Value(0b0010000000);
     pub const EIGHT: Value = Value(0b0100000000);
     pub const NINE: Value = Value(0b1000000000);
-    pub fn new(value: u32) -> Option<Self> {
+    pub fn new(value: BITS) -> Option<Self> {
         if value > 0 && value <= 9 {
             Some(unsafe { Self::new_unchecked(value) })
         } else {
             None
         }
     }
-    pub unsafe fn new_unchecked(value: u32) -> Self {
+    pub unsafe fn new_unchecked(value: BITS) -> Self {
         Value(1 << value)
     }
 }
@@ -86,14 +88,14 @@ impl std::fmt::Display for Value {
 /// Valueの重複のない集合です。
 #[derive(Debug, Clone)]
 pub struct IterValue {
-    bits: u32,
+    bits: BITS,
 }
 
 impl IterValue {
-    pub fn len(&self) -> u32 {
+    pub fn len(&self) -> BITS {
         self.bits.count_ones()
     }
-    fn new_raw(bits: u32) -> IterValue {
+    fn new_raw(bits: BITS) -> IterValue {
         IterValue { bits }
     }
 }
@@ -115,11 +117,11 @@ impl Iterator for IterValue {
 // 初期状態はMASK、
 // 否定された可能性がnの場合、(n+1)桁目が0となる。
 #[derive(Clone, Debug)]
-pub struct Entropy(u32);
+pub struct Entropy(BITS);
 impl Entropy {
     const NEVER: Entropy = Entropy(0);
     /// エントロピーの大きさを返します。
-    pub fn len(&self) -> u32 {
+    pub fn len(&self) -> BITS {
         self.0.count_ones()
     }
     /// 全く収束していない新しいエントロピーを返します。

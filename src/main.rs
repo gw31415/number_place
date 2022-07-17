@@ -19,7 +19,7 @@ fn main() {
             }
             use std::io::Write;
             std::io::stdout().flush().unwrap();
-            if let Some(value) = Value::new((c - b'0') as u32) {
+            if let Some(value) = Value::new((c - b'0') as BITS) {
                 let place = Place::new(x, y).unwrap();
                 if let Err(error) = processor.input(value, place.clone()) {
                     eprintln!("{error}");
