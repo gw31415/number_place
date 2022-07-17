@@ -48,7 +48,7 @@ impl Processor {
         let mut remaining_sets = HashSet::new();
         macro_rules! entropy {
             ($place: expr) => {
-                self.0[$place.x][$place.y]
+                self.0[$place.x()][$place.y()]
             };
         }
         /// セルの値を1つ否定する度に呼ぶ。
@@ -68,6 +68,9 @@ impl Processor {
                     for affected_place in block {
                         // 与えられた一列(y_line)、一行(x_line)、一区画(square)
                         // (:block)のうちで、与えられた$valueが唯一のものを探す。
+                        if affected_place == changing_place {
+                            continue;
+                        }
                         if entropy!(affected_place).is_possible(disabled_value) {
                             match first {
                                 Some(_) => {
