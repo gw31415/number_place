@@ -58,23 +58,23 @@ const MASK: BITS = 0b1111111110;
 #[derive(PartialEq, Eq, Clone, Hash, PartialOrd, Ord, Debug)]
 pub struct Value(BITS);
 impl Value {
-    pub const ONE: Value = Value(0b0000000010);
-    pub const TWO: Value = Value(0b0000000100);
-    pub const THREE: Value = Value(0b0000001000);
-    pub const FOUR: Value = Value(0b0000010000);
-    pub const FIVE: Value = Value(0b0000100000);
-    pub const SIX: Value = Value(0b0001000000);
-    pub const SEVEN: Value = Value(0b0010000000);
-    pub const EIGHT: Value = Value(0b0100000000);
-    pub const NINE: Value = Value(0b1000000000);
-    pub fn new(value: BITS) -> Option<Self> {
+    pub const ONE: Value = unsafe { Value::new_unchecked(1) };
+    pub const TWO: Value = unsafe { Value::new_unchecked(2) };
+    pub const THREE: Value = unsafe { Value::new_unchecked(3) };
+    pub const FOUR: Value = unsafe { Value::new_unchecked(4) };
+    pub const FIVE: Value = unsafe { Value::new_unchecked(5) };
+    pub const SIX: Value = unsafe { Value::new_unchecked(6) };
+    pub const SEVEN: Value = unsafe { Value::new_unchecked(7) };
+    pub const EIGHT: Value = unsafe { Value::new_unchecked(8) };
+    pub const NINE: Value = unsafe { Value::new_unchecked(9) };
+    pub const fn new(value: BITS) -> Option<Self> {
         if value > 0 && value <= 9 {
             Some(unsafe { Self::new_unchecked(value) })
         } else {
             None
         }
     }
-    pub unsafe fn new_unchecked(value: BITS) -> Self {
+    pub const unsafe fn new_unchecked(value: BITS) -> Self {
         Value(1 << value)
     }
 }
@@ -125,12 +125,12 @@ impl Entropy {
         self.0.count_ones()
     }
     /// 全く収束していない新しいエントロピーを返します。
-    pub fn new() -> Self {
-        Default::default()
+    pub const fn new() -> Self {
+        Entropy(MASK)
     }
 
     /// 新しい収束済みのエントロピーを返します。
-    pub fn new_converged(value: Value) -> Self {
+    pub const fn new_converged(value: Value) -> Self {
         Entropy(value.0)
     }
 
@@ -191,7 +191,7 @@ impl Entropy {
 
 impl Default for Entropy {
     fn default() -> Self {
-        Entropy(MASK)
+        Entropy::new()
     }
 }
 
