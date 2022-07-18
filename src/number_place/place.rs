@@ -44,8 +44,8 @@ impl Place {
         Place(i)
     }
     /// そのPlaceに直接的に影響のあるPlaceを返します。
-    pub fn dependencies(&self) -> Dependencies {
-        Dependencies(self.to_owned())
+    pub fn dependencies<'a>(&'a self) -> Dependencies<'a> {
+        Dependencies(self)
     }
 }
 
@@ -55,11 +55,11 @@ impl std::fmt::Display for Place {
     }
 }
 
-#[derive(Debug, Clone)]
 /// 関係するブロックを表します。
-pub struct Dependencies(Place);
+#[derive(Debug, Clone)]
+pub struct Dependencies<'a>(&'a Place);
 
-impl Dependencies {
+impl Dependencies<'_> {
     /// 何のPlaceに関するDependenciesかを返します。
     pub fn about(&self) -> &Place {
         &self.0
@@ -81,17 +81,17 @@ impl Dependencies {
     }
 }
 
-impl IntoIterator for Dependencies {
+impl<'a> IntoIterator for Dependencies<'a> {
     type Item = block::Block;
-    type IntoIter = IntoIter;
+    type IntoIter = IntoIter<'a>;
     fn into_iter(self) -> Self::IntoIter {
         IntoIter(self, 0)
     }
 }
 
-pub struct IntoIter(Dependencies, usize);
+pub struct IntoIter<'a>(Dependencies<'a>, usize);
 
-impl Iterator for IntoIter {
+impl Iterator for IntoIter<'_> {
     type Item = block::Block;
     fn next(&mut self) -> Option<Self::Item> {
         let res = match self.1 {
