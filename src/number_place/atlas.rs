@@ -1,23 +1,33 @@
 use super::entropy::*;
 use super::place::*;
 
+const CELLS: usize = 81;
+
 /// 数独の問題を解く構造体です。
-#[derive(Default)]
-pub struct Processor([[Entropy; 9]; 9]);
+pub struct Processor([Entropy; CELLS]);
+
+impl Default for Processor {
+    fn default() -> Self {
+        Processor::new()
+    }
+}
 
 impl Processor {
+    /// 新しいProcessorを返します。
+    pub fn new() -> Self {
+        const INITIAL_ENTROPY: Entropy = Entropy::new();
+        Processor([INITIAL_ENTROPY; CELLS])
+    }
     /// 現在確認できたエントロピーの総量を返します。
     pub fn entropy_amount(&self) -> f64 {
         let mut count = 1f64;
-        for y in 0..9 {
-            for x in 0..9 {
-                count *= self.0[x][y].len() as f64
-            }
+        for i in 0..81 {
+            count *= self.0[i].len() as f64
         }
         count
     }
     /// 現在の条件で、位置に対してどのような値が入る可能性があるかを返します。
-    pub fn get_atlas(&self) -> &[[Entropy; 9]; 9] {
+    pub fn get_atlas(&self) -> &[Entropy; 81] {
         &self.0
     }
     /// 指定されたセルのエントロピーを収束させます。
@@ -47,7 +57,7 @@ impl Processor {
         let mut remaining_sets = Vec::new();
         macro_rules! entropy {
             ($place: expr) => {
-                self.0[$place.x()][$place.y()]
+                self.0[$place.raw().to_owned()]
             };
         }
         /// セルの値を1つ否定する度に呼ぶ。

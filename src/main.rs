@@ -35,7 +35,7 @@ fn main() {
     let atlas = processor.get_atlas();
     for y in 0..9 {
         for x in 0..9 {
-            let entropy = &atlas[x][y];
+            let entropy = &atlas[y * 9 + x];
             if let Some(value) = entropy.check_convergence() {
                 print!(" {} ", value);
             } else {
