@@ -3,7 +3,7 @@ fn main() {
     use number_place::*;
     // 入力した文字数
     let mut char_count = 0;
-    let mut processor = Processor::default();
+    let mut field = EntropyField::default();
     for y in 0..9 {
         let mut line = String::new();
         std::io::stdin().read_line(&mut line).unwrap();
@@ -21,18 +21,18 @@ fn main() {
             std::io::stdout().flush().unwrap();
             if let Some(value) = Value::new((c - b'0') as BITS) {
                 let place = Place::new(x, y).unwrap();
-                if let Err(error) = processor.input(value, place.clone()) {
+                if let Err(error) = field.input(value, place.clone()) {
                     eprintln!("{error}");
                     panic!("ルール違反が検出されました。");
                 }
-                println!("STEP {:2}: {}", char_count, processor.entropy_amount());
+                println!("STEP {:2}: {}", char_count, field.len());
             } else {
                 panic!("入力形式が正しくありません。");
             }
         }
     }
 
-    let atlas = processor.get_atlas();
+    let atlas = field.get_atlas();
     for y in 0..9 {
         for x in 0..9 {
             let entropy = &atlas[y * 9 + x];

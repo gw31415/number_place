@@ -4,22 +4,22 @@ use super::place::*;
 const CELLS: usize = 81;
 
 /// 数独の問題を解く構造体です。
-pub struct Processor([Entropy; CELLS]);
+pub struct EntropyField([Entropy; CELLS]);
 
-impl Default for Processor {
+impl Default for EntropyField {
     fn default() -> Self {
-        Processor::new()
+        EntropyField::new()
     }
 }
 
-impl Processor {
+impl EntropyField {
     /// 新しいProcessorを返します。
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         const INITIAL_ENTROPY: Entropy = Entropy::new();
-        Processor([INITIAL_ENTROPY; CELLS])
+        EntropyField([INITIAL_ENTROPY; CELLS])
     }
     /// 現在確認できたエントロピーの総量を返します。
-    pub fn entropy_amount(&self) -> f64 {
+    pub fn len(&self) -> f64 {
         let mut count = 1f64;
         for i in 0..81 {
             count *= self.0[i].len() as f64
