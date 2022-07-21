@@ -1,10 +1,11 @@
 use super::entropy::*;
 use super::place::*;
 
-const CELLS: usize = 81;
+/// セルの個数
+pub const CELLS_COUNT: usize = 81;
 
 /// 数独の問題を解く構造体です。
-pub struct EntropyField([Entropy; CELLS]);
+pub struct EntropyField([Entropy; CELLS_COUNT]);
 
 impl Default for EntropyField {
     fn default() -> Self {
@@ -13,10 +14,10 @@ impl Default for EntropyField {
 }
 
 impl EntropyField {
-    /// 新しいProcessorを返します。
+    /// 新しいEntropyFieldを返します。
     pub const fn new() -> Self {
         const INITIAL_ENTROPY: Entropy = Entropy::new();
-        EntropyField([INITIAL_ENTROPY; CELLS])
+        EntropyField([INITIAL_ENTROPY; CELLS_COUNT])
     }
     /// 現在確認できたエントロピーの総量を返します。
     pub fn len(&self) -> f64 {
@@ -27,7 +28,7 @@ impl EntropyField {
         count
     }
     /// 現在の条件で、位置に対してどのような値が入る可能性があるかを返します。
-    pub fn get_atlas(&self) -> &[Entropy; 81] {
+    pub fn get_atlas(&self) -> &[Entropy; CELLS_COUNT] {
         &self.0
     }
     /// 指定されたセルのエントロピーを収束させます。
