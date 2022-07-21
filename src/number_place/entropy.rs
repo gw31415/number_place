@@ -16,11 +16,10 @@ mod test {
         entropy.disable(&Value::NINE).unwrap_err();
     }
     #[test]
-    fn new_converged_is_converged_is_possible() {
+    fn value_into_is_possible() {
         for i in 1..=9 {
             let value = &Value::new(i).unwrap();
-            let entropy = Entropy::new_converged(value.clone());
-            assert!(entropy.is_converged());
+            let entropy: Entropy = value.clone().into();
             assert_eq!(entropy.len(), 1);
             assert!(entropy.is_possible(value));
             for j in 1..=9 {
@@ -35,7 +34,7 @@ mod test {
         for i in 1..=9 {
             let test_value = Value::new(i).unwrap();
             let mut entropy = Entropy::new();
-            let rest = entropy.try_converge(&test_value).unwrap();
+            let rest = entropy.superimpose(test_value.clone()).unwrap();
             assert_eq!(entropy.len(), 1);
             assert_eq!(rest.len(), 8);
             for rest_value in rest {
@@ -44,8 +43,8 @@ mod test {
         }
         let mut entropy = Entropy::new();
         entropy.disable(&Value::ONE).unwrap();
-        entropy.try_converge(&Value::ONE).unwrap_err();
-        entropy.try_converge(&Value::TWO).unwrap();
+        entropy.superimpose(Value::ONE).unwrap_err();
+        entropy.superimpose(Value::TWO).unwrap();
         assert_eq!(entropy.len(), 1);
     }
 }
@@ -79,6 +78,12 @@ impl Value {
     }
 }
 
+impl Into<Entropy> for Value {
+    fn into(self) -> Entropy {
+        Entropy(self.0)
+    }
+}
+
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0.trailing_zeros())
@@ -87,25 +92,20 @@ impl std::fmt::Display for Value {
 
 /// Valueの重複のない集合です。
 #[derive(Debug, Clone)]
-pub struct IterValue {
-    bits: BITS,
-}
+pub struct IterValue(BITS);
 
 impl IterValue {
     pub fn len(&self) -> BITS {
-        self.bits.count_ones()
-    }
-    fn new_raw(bits: BITS) -> IterValue {
-        IterValue { bits }
+        self.0.count_ones()
     }
 }
 
 impl Iterator for IterValue {
     type Item = Value;
     fn next(&mut self) -> Option<Self::Item> {
-        match Value::new(self.bits.trailing_zeros()) {
+        match Value::new(self.0.trailing_zeros()) {
             Some(v) => {
-                self.bits -= v.0;
+                self.0 -= v.0;
                 Some(v)
             }
             None => None,
@@ -116,22 +116,17 @@ impl Iterator for IterValue {
 /// そのセルでの値の可能性を表します。
 // 初期状態はMASK、
 // 否定された可能性がnの場合、(n+1)桁目が0となる。
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Entropy(BITS);
 impl Entropy {
-    const NEVER: Entropy = Entropy(0);
-    /// エントロピーの大きさを返します。
-    pub fn len(&self) -> BITS {
-        self.0.count_ones()
-    }
     /// 全く収束していない新しいエントロピーを返します。
     pub const fn new() -> Self {
         Entropy(MASK)
     }
 
-    /// 新しい収束済みのエントロピーを返します。
-    pub const fn new_converged(value: Value) -> Self {
-        Entropy(value.0)
+    /// エントロピーの大きさを返します。
+    pub fn len(&self) -> BITS {
+        self.0.count_ones()
     }
 
     /// その値になる可能性があるかどうかを返します。
@@ -140,18 +135,18 @@ impl Entropy {
     }
 
     /// 指定された値の可能性を否定します。
+    /// 可能性を削除した場合はOk(true)を返します。
     /// 既にその値になる可能性がなかった場合はOk(false)を返します。
     /// 可能性を否定した結果不能となった場合はErr(EntropyConflictError)を返します。
-    /// 不能となったselfは回復しません。
     pub fn disable(&mut self, value: &Value) -> Result<bool, EntropyConflictError> {
         if self.is_possible(value) {
-            self.0 -= value.0;
-            if self.0 == 0 {
+            if self.len() == 1 {
                 Err(EntropyConflictError {
-                    entropy: Entropy::NEVER,
-                    value: value.to_owned(),
+                    main_entropy: self.to_owned(),
+                    conflicting_entropy: value.to_owned().into(),
                 })
             } else {
+                self.0 -= value.0;
                 Ok(true)
             }
         } else {
@@ -159,31 +154,24 @@ impl Entropy {
         }
     }
 
-    /// 確率が収束しているかどうかを返します。
-    pub fn is_converged(&self) -> bool {
-        self.len() == 1
-    }
-
-    /// 確率が収束している場合、その値を返します。
-    pub fn check_convergence(&self) -> Option<Value> {
-        if self.is_converged() {
-            Some(Value(self.0))
+    /// 他のEntropy、またはValueと重ねあわせます。
+    /// 重ねあわせが出来た場合は否定された可能性のリストを返します。
+    pub fn superimpose<T>(&mut self, into_entropy: T) -> Result<IterValue, EntropyConflictError>
+    where
+        T: Into<Entropy>,
+    {
+        let entropy: Entropy = into_entropy.into();
+        // selfから削除される予定の可能性のリスト
+        let res = IterValue(!entropy.0 & self.0);
+        if res.0 != self.0 {
+            // 全ては削除されない場合
+            self.0 &= entropy.0;
+            Ok(res)
         } else {
-            None
-        }
-    }
-
-    /// 指定された値に収束させます。
-    /// 収束した場合は否定された可能性のIterValueを返します。
-    pub fn try_converge(&mut self, value: &Value) -> Result<IterValue, EntropyConflictError> {
-        if self.is_possible(value) {
-            let res = Ok(IterValue::new_raw(self.0 - value.0));
-            self.0 = value.0;
-            res
-        } else {
+            // 仮に可能性削除すると全て消えてしまう場合。
             Err(EntropyConflictError {
-                value: value.to_owned(),
-                entropy: self.to_owned(),
+                main_entropy: self.to_owned(),
+                conflicting_entropy: entropy.to_owned(),
             })
         }
     }
@@ -206,11 +194,22 @@ impl std::fmt::Display for Entropy {
     }
 }
 
+impl TryInto<Value> for Entropy {
+    type Error = ();
+    fn try_into(self) -> Result<Value, Self::Error> {
+        if self.len() == 1 {
+            Ok(Value(self.0))
+        } else {
+            Err(())
+        }
+    }
+}
+
 impl IntoIterator for Entropy {
     type Item = Value;
     type IntoIter = IterValue;
     fn into_iter(self) -> Self::IntoIter {
-        IterValue::new_raw(self.0)
+        IterValue(self.0)
     }
 }
 
@@ -219,12 +218,12 @@ impl IntoIterator for Entropy {
 // disableの結果、存在するペアがなくなってしまった場合はNoneで指定。
 #[derive(Debug)]
 pub struct EntropyConflictError {
-    value: Value,
-    entropy: Entropy,
+    conflicting_entropy: Entropy,
+    main_entropy: Entropy,
 }
 
 impl std::fmt::Display for EntropyConflictError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} <- {}", self.entropy, self.value)
+        write!(f, "{} x {}", self.main_entropy, self.conflicting_entropy)
     }
 }

@@ -36,7 +36,8 @@ fn main() {
     for y in 0..9 {
         for x in 0..9 {
             let entropy = &atlas[y * 9 + x];
-            if let Some(value) = entropy.check_convergence() {
+            if let Ok(value) = entropy.to_owned().try_into() {
+                let value: Value = value;
                 print!(" {} ", value);
             } else {
                 print!("[{}]", entropy.len());
