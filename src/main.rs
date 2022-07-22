@@ -35,7 +35,6 @@ fn main() {
 
     if field.len() > 1. {
         use number_place::{entropy::ValueIter, entropy_field::CELLS_COUNT};
-        println!("\nSwitching brute-force mode....");
         fn first_entropy(field: &EntropyField) -> (Place, Entropy) {
             for i in 0..CELLS_COUNT {
                 let place = unsafe { Place::new_from_raw_unchecked(i) };
@@ -50,6 +49,7 @@ fn main() {
             let (place, entropy) = first_entropy(&field);
             vec![(field, place, entropy.into_iter())]
         };
+        println!();
         println!("======BRUTE-FORCE======");
         while let Some((field, place, mut iter)) = stack.pop() {
             if let Some(value) = iter.next() {
