@@ -48,8 +48,8 @@ impl EntropyField {
     /// 指定されたセルにエントロピーを適用します。
     pub fn insert(
         &mut self,
-        into_entropy: impl Into<Entropy>,
         place: Place,
+        into_entropy: impl Into<Entropy>,
     ) -> Result<(), RuleViolationError> {
         let mut remaining_sets: Vec<(Entropy, Place)> = Vec::new();
         remaining_sets.push((into_entropy.into(), place));

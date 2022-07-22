@@ -21,7 +21,7 @@ fn main() {
             std::io::stdout().flush().unwrap();
             if let Some(value) = Value::new((c - b'0') as BITS) {
                 let place = Place::new(x, y).unwrap();
-                if let Err(error) = field.insert(value, place.clone()) {
+                if let Err(error) = field.insert(place.clone(), value) {
                     eprintln!("{error}");
                     panic!("ルール違反が検出されました。");
                 }
