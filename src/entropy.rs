@@ -50,7 +50,7 @@ mod test {
 }
 
 /// ValueやEntropyが内部的に用いている型です。
-/// コンストラクト時にはこの型で入力を行ないます。
+/// コンストラクト時にはこの型で入力を行います。
 pub type BITS = u32;
 
 const MASK: BITS = 0b1111111110;
@@ -136,7 +136,7 @@ impl Entropy {
         self.0 & value.0 != 0
     }
 
-    /// 指定された値の可能性を否定します。
+    /// 指定された値の可能性を手動で否定します。
     /// 可能性を削除した場合はOk(true)を返します。
     /// 既にその値になる可能性がなかった場合はOk(false)を返します。
     /// 可能性を否定した結果不能となった場合はErr(EntropyConflictError)を返します。
@@ -215,9 +215,7 @@ impl IntoIterator for Entropy {
     }
 }
 
-/// 値とエントロピーが競合した際のエラーです。
-// 競合した値とエントロピーのペアが存在する場合はSome(Value, Entropy)の形式で指定。
-// disableの結果、存在するペアがなくなってしまった場合はNoneで指定。
+/// エントロピーが競合した際のエラーです。
 #[derive(Debug)]
 pub struct EntropyConflictError {
     conflicting_entropy: Entropy,

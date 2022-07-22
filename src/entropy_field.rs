@@ -4,7 +4,7 @@ use super::place::*;
 /// セルの個数
 pub const CELLS_COUNT: usize = 81;
 
-/// 数独の問題表を表わす構造体です。
+/// 数独の表上で演繹的にエントロピーの重ねあわせを計算する構造体です。
 pub struct EntropyField([Entropy; CELLS_COUNT]);
 
 impl Default for EntropyField {
