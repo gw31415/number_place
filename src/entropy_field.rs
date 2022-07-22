@@ -5,6 +5,7 @@ use super::place::*;
 pub const CELLS_COUNT: usize = 81;
 
 /// 数独の表上で演繹的にエントロピーの重ねあわせを計算する構造体です。
+#[derive(Clone)]
 pub struct EntropyField([Entropy; CELLS_COUNT]);
 
 impl Default for EntropyField {
@@ -44,6 +45,11 @@ impl EntropyField {
             count *= self.0[i].len() as f64
         }
         count
+    }
+
+    /// 指定された位置のエントロピーを返します。
+    pub fn entropy_at(&self, place: &Place) -> &Entropy {
+        &self.0[*place.raw()]
     }
 
     /// 指定された位置のセルにエントロピーを適用します。
