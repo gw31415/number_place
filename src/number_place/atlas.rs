@@ -13,6 +13,24 @@ impl Default for EntropyField {
     }
 }
 
+impl std::fmt::Display for EntropyField {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for i in 0..81 {
+            let entropy = &self.0[i];
+            if let Ok(value) = entropy.to_owned().try_into() {
+                let value: Value = value;
+                write!(f, " {} ", value)?;
+            } else {
+                write!(f, "[{}]", entropy.len())?;
+            }
+            if i % 9 == 8 && i != 80 {
+                writeln!(f)?;
+            }
+        }
+        Ok(())
+    }
+}
+
 impl EntropyField {
     /// 新しいEntropyFieldを返します。
     pub const fn new() -> Self {
@@ -27,12 +45,8 @@ impl EntropyField {
         }
         count
     }
-    /// 現在の条件で、位置に対してどのような値が入る可能性があるかを返します。
-    pub fn get_atlas(&self) -> &[Entropy; CELLS_COUNT] {
-        &self.0
-    }
     /// 指定されたセルにエントロピーを適用します。
-    pub fn input(
+    pub fn insert(
         &mut self,
         into_entropy: impl Into<Entropy>,
         place: Place,
@@ -43,7 +57,7 @@ impl EntropyField {
             let iter = remaining_sets;
             remaining_sets = Default::default();
             for (value, place) in iter {
-                for remaining_set in self.inner_input(value, place)? {
+                for remaining_set in self.inner_insert(value, place)? {
                     remaining_sets.push((remaining_set.0.into(), remaining_set.1));
                 }
             }
@@ -54,7 +68,7 @@ impl EntropyField {
     /// 指定されたセルにエントロピーを適用します。
     /// 新たに必要になった収束先と値のセットを返します。
     /// この実装になったのはスタックオーバーフロー対策の為。
-    fn inner_input(
+    fn inner_insert(
         &mut self,
         into_entropy: impl Into<Entropy>,
         place: Place,
