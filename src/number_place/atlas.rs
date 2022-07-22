@@ -31,30 +31,35 @@ impl EntropyField {
     pub fn get_atlas(&self) -> &[Entropy; CELLS_COUNT] {
         &self.0
     }
-    /// 指定されたセルのエントロピーを収束させます。
-    pub fn input(&mut self, value: Value, place: Place) -> Result<(), RuleViolationError> {
-        let mut remaining_sets = Vec::new();
-        remaining_sets.push((value, place));
+    /// 指定されたセルにエントロピーを適用します。
+    pub fn input(
+        &mut self,
+        into_entropy: impl Into<Entropy>,
+        place: Place,
+    ) -> Result<(), RuleViolationError> {
+        let mut remaining_sets: Vec<(Entropy, Place)> = Vec::new();
+        remaining_sets.push((into_entropy.into(), place));
         while !remaining_sets.is_empty() {
             let iter = remaining_sets;
             remaining_sets = Default::default();
             for (value, place) in iter {
                 for remaining_set in self.inner_input(value, place)? {
-                    remaining_sets.push(remaining_set);
+                    remaining_sets.push((remaining_set.0.into(), remaining_set.1));
                 }
             }
         }
         Ok(())
     }
 
-    /// 指定されたセルをその値に収束させます。
+    /// 指定されたセルにエントロピーを適用します。
     /// 新たに必要になった収束先と値のセットを返します。
     /// この実装になったのはスタックオーバーフロー対策の為。
     fn inner_input(
         &mut self,
-        value: Value,
+        into_entropy: impl Into<Entropy>,
         place: Place,
     ) -> Result<Vec<(Value, Place)>, RuleViolationError> {
+        let entropy = into_entropy.into();
         let mut remaining_sets = Vec::new();
         macro_rules! entropy {
             ($place: expr) => {
@@ -98,7 +103,7 @@ impl EntropyField {
         // 指定されたセルのエントロピーを収束させる。
         let disabled_values =
             entropy!(&place)
-                .superimpose(value.to_owned())
+                .superimpose(entropy)
                 .map_err(|err| RuleViolationError {
                     conflict: err,
                     place: place.to_owned(),
@@ -107,26 +112,30 @@ impl EntropyField {
             // 削除された可能性について探索
             search_uniqueness_around!(&disabled_value, &place);
         }
-        // 直接関係のあるセルから可能性を削除していく。
-        for related_block in place.dependencies().into_iter() {
-            for related_place in related_block.into_iter() {
-                if related_place != place {
-                    if entropy!(related_place).disable(&value).map_err(|err| {
-                        RuleViolationError {
-                            conflict: err,
-                            place: place.to_owned(),
-                        }
-                    })? {
-                        search_uniqueness_around!(&value, &related_place);
+        // 仮に指定されたエントロピーが収束する場合。
+        // (値が一つのとき)
+        if let Ok(value) = entropy!(place).to_owned().try_into() {
+            for related_block in place.dependencies().into_iter() {
+                for related_place in related_block.into_iter() {
+                    if related_place != place {
+                        if entropy!(related_place).disable(&value).map_err(|err| {
+                            RuleViolationError {
+                                conflict: err,
+                                place: place.to_owned(),
+                            }
+                        })? {
+                            search_uniqueness_around!(&value, &related_place);
 
-                        // 仮にこの削除によって関係するセルの可能性の数が1つになった場合
-                        if let Ok(value) = entropy!(&related_place).to_owned().try_into() {
-                            remaining_sets.push((value, related_place));
+                            // 仮にこの削除によって関係するセルの可能性の数が1つになった場合
+                            if let Ok(value) = entropy!(&related_place).to_owned().try_into() {
+                                remaining_sets.push((value, related_place));
+                            }
                         }
                     }
                 }
             }
         }
+        // 直接関係のあるセルから可能性を削除していく。
         Ok(remaining_sets)
     }
 }
