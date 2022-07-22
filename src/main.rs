@@ -1,4 +1,5 @@
 use number_place::*;
+
 fn main() {
     // 入力した文字数
     let mut char_count = 0;
@@ -30,7 +31,45 @@ fn main() {
             }
         }
     }
-
     println!("{field}");
 
+    if field.len() > 1. {
+        use number_place::{entropy::ValueIter, entropy_field::CELLS_COUNT};
+        println!("\nSwitching brute-force mode....");
+        fn first_entropy(field: &EntropyField) -> (Place, Entropy) {
+            for i in 0..CELLS_COUNT {
+                let place = unsafe { Place::new_from_raw_unchecked(i) };
+                if field.entropy_at(&place).len() > 1 {
+                    let entropy = field.entropy_at(&place).to_owned();
+                    return (place, entropy);
+                }
+            }
+            unreachable!();
+        }
+        let mut stack: Vec<(EntropyField, Place, ValueIter)> = {
+            let (place, entropy) = first_entropy(&field);
+            vec![(field, place, entropy.into_iter())]
+        };
+        println!("======BRUTE-FORCE======");
+        while let Some((field, place, mut iter)) = stack.pop() {
+            if let Some(value) = iter.next() {
+                let mut next_field = field.clone();
+                stack.push((field, place.clone(), iter));
+                print!("ASSUMING: {value}@{place} -> LEN: ");
+                if let Ok(_) = next_field.insert(place, value) {
+                    println!("{}", next_field.len());
+                    if next_field.len() == 1. {
+                        println!("{next_field}");
+                        return;
+                    } else {
+                        let (place, entropy) = first_entropy(&next_field);
+                        stack.push((next_field, place, entropy.into_iter()))
+                    }
+                } else {
+                    println!("0");
+                }
+            }
+        }
+        eprintln!("確定した解が見つからないままスタックがなくなりました。");
+    }
 }
