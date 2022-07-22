@@ -83,15 +83,16 @@ impl Dependencies<'_> {
 
 impl<'a> IntoIterator for Dependencies<'a> {
     type Item = block::Block;
-    type IntoIter = IntoIter<'a>;
+    type IntoIter = BlockIter<'a>;
     fn into_iter(self) -> Self::IntoIter {
-        IntoIter(self, 0)
+        BlockIter(self, 0)
     }
 }
 
-pub struct IntoIter<'a>(Dependencies<'a>, usize);
+/// ある1つのセルに関係する3つのブロックのイテレータです。
+pub struct BlockIter<'a>(Dependencies<'a>, usize);
 
-impl Iterator for IntoIter<'_> {
+impl Iterator for BlockIter<'_> {
     type Item = block::Block;
     fn next(&mut self) -> Option<Self::Item> {
         let res = match self.1 {
@@ -130,50 +131,50 @@ pub mod block {
 
     impl IntoIterator for Block {
         type Item = Place;
-        type IntoIter = IntoIter;
+        type IntoIter = PlaceIter;
         fn into_iter(self) -> Self::IntoIter {
             use BlockType::*;
             match self.1 {
-                XLine => IntoIter::x_line(self.0),
-                YLine => IntoIter::y_line(self.0),
-                Square => IntoIter::square(self.0),
+                XLine => PlaceIter::x_line(self.0),
+                YLine => PlaceIter::y_line(self.0),
+                Square => PlaceIter::square(self.0),
             }
         }
     }
     /// Placeを返すイテレータです。
     /// 互いに関係のある9セル内でイテレートします。
-    pub struct IntoIter {
+    pub struct PlaceIter {
         place: usize,
         sneak: fn(usize) -> usize,
         len: usize,
     }
 
-    impl IntoIter {
-        fn x_line(place: usize) -> IntoIter {
+    impl PlaceIter {
+        fn x_line(place: usize) -> PlaceIter {
             fn sneak(index: usize) -> usize {
                 index + 1
             }
-            IntoIter {
+            PlaceIter {
                 place,
                 sneak,
                 len: 9,
             }
         }
-        fn y_line(place: usize) -> IntoIter {
+        fn y_line(place: usize) -> PlaceIter {
             fn sneak(index: usize) -> usize {
                 index + 9
             }
-            IntoIter {
+            PlaceIter {
                 place,
                 sneak,
                 len: 9,
             }
         }
-        fn square(place: usize) -> IntoIter {
+        fn square(place: usize) -> PlaceIter {
             fn sneak(index: usize) -> usize {
                 index + if index % 3 == 2 { 7 } else { 1 }
             }
-            IntoIter {
+            PlaceIter {
                 place,
                 sneak,
                 len: 9,
@@ -181,7 +182,7 @@ pub mod block {
         }
     }
 
-    impl Iterator for IntoIter {
+    impl Iterator for PlaceIter {
         type Item = Place;
         fn next(&mut self) -> Option<Self::Item> {
             if 0 != self.len {

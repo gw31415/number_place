@@ -1,6 +1,5 @@
-pub mod number_place;
+use number_place::*;
 fn main() {
-    use number_place::*;
     // 入力した文字数
     let mut char_count = 0;
     let mut field = EntropyField::default();

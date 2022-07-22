@@ -90,17 +90,17 @@ impl std::fmt::Display for Value {
     }
 }
 
-/// Valueの重複のない集合です。
+/// Valueの重複のないイテレータです。
 #[derive(Debug, Clone)]
-pub struct IterValue(BITS);
+pub struct ValueIter(BITS);
 
-impl IterValue {
+impl ValueIter {
     pub fn len(&self) -> BITS {
         self.0.count_ones()
     }
 }
 
-impl Iterator for IterValue {
+impl Iterator for ValueIter {
     type Item = Value;
     fn next(&mut self) -> Option<Self::Item> {
         match Value::new(self.0.trailing_zeros()) {
@@ -156,13 +156,13 @@ impl Entropy {
 
     /// 他のEntropy、またはValueと重ねあわせます。
     /// 重ねあわせが出来た場合は否定された可能性のリストを返します。
-    pub fn superimpose<T>(&mut self, into_entropy: T) -> Result<IterValue, EntropyConflictError>
+    pub fn superimpose<T>(&mut self, into_entropy: T) -> Result<ValueIter, EntropyConflictError>
     where
         T: Into<Entropy>,
     {
         let entropy: Entropy = into_entropy.into();
         // selfから削除される予定の可能性のリスト
-        let res = IterValue(!entropy.0 & self.0);
+        let res = ValueIter(!entropy.0 & self.0);
         if res.0 != self.0 {
             // 全ては削除されない場合
             self.0 &= entropy.0;
@@ -207,9 +207,9 @@ impl TryInto<Value> for Entropy {
 
 impl IntoIterator for Entropy {
     type Item = Value;
-    type IntoIter = IterValue;
+    type IntoIter = ValueIter;
     fn into_iter(self) -> Self::IntoIter {
-        IterValue(self.0)
+        ValueIter(self.0)
     }
 }
 
