@@ -49,12 +49,14 @@ mod test {
     }
 }
 
+/// ValueやEntropyが内部的に用いている型です。
+/// コンストラクト時にはこの型で入力を行ないます。
 pub type BITS = u32;
 
 const MASK: BITS = 0b1111111110;
 
 /// 数独の各セルに入っている値の型です。
-#[derive(PartialEq, Eq, Clone, Hash, PartialOrd, Ord, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Value(BITS);
 impl Value {
     pub const ONE: Value = unsafe { Value::new_unchecked(1) };

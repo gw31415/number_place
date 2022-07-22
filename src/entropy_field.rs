@@ -46,7 +46,7 @@ impl EntropyField {
         count
     }
 
-    /// 指定されたセルにエントロピーを適用します。
+    /// 指定された位置のセルにエントロピーを適用します。
     pub fn insert(
         &mut self,
         place: Place,

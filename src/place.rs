@@ -1,5 +1,5 @@
 /// 数独上の位置を表します。
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Place(usize);
 
 impl Place {
@@ -106,7 +106,7 @@ impl Iterator for BlockIter<'_> {
     }
 }
 
-pub mod block {
+mod block {
     use super::*;
     /// 互いに関係のあるPlaceの9セル1組がいずれのタイプかを表します。
     pub enum BlockType {
@@ -196,3 +196,5 @@ pub mod block {
         }
     }
 }
+
+pub use block::*;
