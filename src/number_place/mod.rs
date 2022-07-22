@@ -1,6 +1,6 @@
-mod atlas;
 mod entropy;
+mod entropy_field;
 mod place;
-pub use atlas::*;
 pub use entropy::*;
+pub use entropy_field::*;
 pub use place::*;

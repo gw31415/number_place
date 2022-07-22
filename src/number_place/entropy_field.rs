@@ -4,7 +4,7 @@ use super::place::*;
 /// セルの個数
 pub const CELLS_COUNT: usize = 81;
 
-/// 数独の問題を解く構造体です。
+/// 数独の問題表を表わす構造体です。
 pub struct EntropyField([Entropy; CELLS_COUNT]);
 
 impl Default for EntropyField {
@@ -45,6 +45,7 @@ impl EntropyField {
         }
         count
     }
+
     /// 指定されたセルにエントロピーを適用します。
     pub fn insert(
         &mut self,
@@ -64,7 +65,6 @@ impl EntropyField {
         }
         Ok(())
     }
-
     /// 指定されたセルにエントロピーを適用します。
     /// 新たに必要になった収束先と値のセットを返します。
     /// この実装になったのはスタックオーバーフロー対策の為。
