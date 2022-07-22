@@ -2,7 +2,7 @@ use number_place::*;
 fn main() {
     // 入力した文字数
     let mut char_count = 0;
-    let mut field = EntropyField::default();
+    let mut field = EntropyField::new();
     for y in 0..9 {
         let mut line = String::new();
         std::io::stdin().read_line(&mut line).unwrap();
