@@ -18,7 +18,7 @@ fn main() {
             }
             use std::io::Write;
             std::io::stdout().flush().unwrap();
-            if let Some(value) = Value::new((c - b'0') as BITS) {
+            if let Some(value) = Value::new((c - b'0').into()) {
                 let place = Place::new(x, y).unwrap();
                 if let Err(error) = field.insert(place.clone(), value) {
                     eprintln!("{error}");

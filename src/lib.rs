@@ -1,6 +1,6 @@
-mod entropy;
-mod entropy_field;
-mod place;
-pub use entropy::*;
-pub use entropy_field::*;
-pub use place::*;
+pub mod entropy;
+pub mod entropy_field;
+pub mod place;
+pub use entropy::{Value, Entropy};
+pub use entropy_field::EntropyField;
+pub use place::Place;
