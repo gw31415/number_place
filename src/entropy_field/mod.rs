@@ -1,5 +1,8 @@
-use super::entropy::*;
-use super::place::*;
+pub mod entropy;
+pub mod place;
+
+use entropy::*;
+use place::*;
 
 /// セルの個数
 pub const CELLS_COUNT: usize = 81;

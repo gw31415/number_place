@@ -1,6 +1,6 @@
-pub mod entropy;
 pub mod entropy_field;
-pub mod place;
-pub use entropy::{Value, Entropy};
+pub mod brute_force;
+pub use entropy_field::entropy::{Value, Entropy};
 pub use entropy_field::EntropyField;
-pub use place::Place;
+pub use entropy_field::place::Place;
+pub use brute_force::Attacker;
