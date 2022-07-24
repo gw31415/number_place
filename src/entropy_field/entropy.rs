@@ -80,6 +80,12 @@ impl Value {
     }
 }
 
+impl Into<u32> for Value {
+    fn into(self) -> u32 {
+        self.0.trailing_zeros()
+    }
+}
+
 impl Into<Entropy> for Value {
     fn into(self) -> Entropy {
         Entropy(self.0)
