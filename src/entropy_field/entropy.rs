@@ -80,8 +80,8 @@ impl Value {
     }
 }
 
-impl Into<u32> for Value {
-    fn into(self) -> u32 {
+impl Into<BITS> for Value {
+    fn into(self) -> BITS {
         self.0.trailing_zeros()
     }
 }
@@ -95,6 +95,22 @@ impl Into<Entropy> for Value {
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0.trailing_zeros())
+    }
+}
+
+pub const BITS_LENGTH: usize = std::mem::size_of::<BITS>();
+
+impl Into<[u8; BITS_LENGTH]> for Value {
+    fn into(self) -> [u8; BITS_LENGTH] {
+        unsafe { std::mem::transmute(self.0) }
+    }
+}
+
+impl TryFrom<[u8; BITS_LENGTH]> for Value {
+    type Error = ();
+    fn try_from(value: [u8; BITS_LENGTH]) -> Result<Self, Self::Error> {
+        let entropy: Entropy = value.try_into()?;
+        entropy.try_into()
     }
 }
 
@@ -218,6 +234,24 @@ impl IntoIterator for Entropy {
     type IntoIter = ValueIter;
     fn into_iter(self) -> Self::IntoIter {
         ValueIter(self.0)
+    }
+}
+
+impl Into<[u8; BITS_LENGTH]> for Entropy {
+    fn into(self) -> [u8; BITS_LENGTH] {
+        unsafe { std::mem::transmute(self.0) }
+    }
+}
+
+impl TryFrom<[u8; BITS_LENGTH]> for Entropy {
+    type Error = ();
+    fn try_from(value: [u8; BITS_LENGTH]) -> Result<Self, Self::Error> {
+        let value: BITS = unsafe { std::mem::transmute(value) };
+        if value != value & MASK {
+            Err(())
+        } else {
+            Ok(Entropy(value))
+        }
     }
 }
 

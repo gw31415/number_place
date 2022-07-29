@@ -1,3 +1,26 @@
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn into_from() {
+        macro_rules! check {
+            ($a: expr) => {{
+                let a = $a;
+                let a_bytes: [u8; BITS_LENGTH] = a.clone().into();
+                let b = EntropyField::try_from(a_bytes).unwrap();
+                let (a, b): ([u8; BITS_LENGTH], [u8; BITS_LENGTH]) = (a.into(), b.into());
+                for i in 0..BITS_LENGTH {
+                    assert_eq!(a[i], b[i]);
+                }
+            }};
+        }
+        let mut a = EntropyField::new();
+        check!(a.clone());
+        a.insert(Place::new(1, 2).unwrap(), Value::TWO).unwrap();
+        check!(a.clone());
+    }
+}
+
 pub mod entropy;
 pub mod place;
 
@@ -14,6 +37,28 @@ pub struct EntropyField([Entropy; CELLS_COUNT]);
 impl Default for EntropyField {
     fn default() -> Self {
         EntropyField::new()
+    }
+}
+
+pub const BITS_LENGTH: usize = std::mem::size_of::<BITS>() * CELLS_COUNT;
+
+impl Into<[u8; BITS_LENGTH]> for EntropyField {
+    fn into(self) -> [u8; BITS_LENGTH] {
+        unsafe { std::mem::transmute(self.0) }
+    }
+}
+
+impl TryFrom<[u8; BITS_LENGTH]> for EntropyField {
+    type Error = ();
+    fn try_from(value: [u8; BITS_LENGTH]) -> Result<Self, Self::Error> {
+        let cells: [BITS; CELLS_COUNT] = unsafe { std::mem::transmute(value) };
+        for cell in &cells {
+            let bytes: [u8; entropy::BITS_LENGTH] = unsafe { std::mem::transmute(cell.to_owned()) };
+            if let Err(_) = Entropy::try_from(bytes) {
+                return Err(());
+            }
+        }
+        Ok(EntropyField(unsafe { std::mem::transmute(cells) }))
     }
 }
 
@@ -163,6 +208,7 @@ impl EntropyField {
     }
 }
 
+#[derive(Debug)]
 /// ルール違反が検出されたエラー
 pub struct RuleViolationError {
     conflict: EntropyConflictError,
