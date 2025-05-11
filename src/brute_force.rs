@@ -1,6 +1,6 @@
 use super::*;
-use entropy_field::*;
 use entropy::ValueIter;
+use entropy_field::*;
 
 /// あるEntropyFieldが与えられた時、一番前方にある収束していないエントロピーの
 /// 位置とエントロピーの値を返します。

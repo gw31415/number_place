@@ -42,9 +42,9 @@ impl Default for EntropyField {
 
 pub const BITS_LENGTH: usize = std::mem::size_of::<BITS>() * CELLS_COUNT;
 
-impl Into<[u8; BITS_LENGTH]> for EntropyField {
-    fn into(self) -> [u8; BITS_LENGTH] {
-        unsafe { std::mem::transmute(self.0) }
+impl From<EntropyField> for [u8; BITS_LENGTH] {
+    fn from(val: EntropyField) -> Self {
+        unsafe { std::mem::transmute(val.0) }
     }
 }
 
@@ -53,12 +53,14 @@ impl TryFrom<[u8; BITS_LENGTH]> for EntropyField {
     fn try_from(value: [u8; BITS_LENGTH]) -> Result<Self, Self::Error> {
         let cells: [BITS; CELLS_COUNT] = unsafe { std::mem::transmute(value) };
         for cell in &cells {
-            let bytes: [u8; entropy::BITS_LENGTH] = unsafe { std::mem::transmute(cell.to_owned()) };
-            if let Err(_) = Entropy::try_from(bytes) {
+            let bytes: [u8; entropy::BITS_LENGTH] = cell.to_owned().to_ne_bytes();
+            if Entropy::try_from(bytes).is_err() {
                 return Err(());
             }
         }
-        Ok(EntropyField(unsafe { std::mem::transmute(cells) }))
+        Ok(EntropyField(unsafe {
+            std::mem::transmute::<[u32; 81], [Entropy; 81]>(cells)
+        }))
     }
 }
 
@@ -106,8 +108,7 @@ impl EntropyField {
         place: Place,
         into_entropy: impl Into<Entropy>,
     ) -> Result<(), RuleViolationError> {
-        let mut remaining_sets: Vec<(Entropy, Place)> = Vec::new();
-        remaining_sets.push((into_entropy.into(), place));
+        let mut remaining_sets: Vec<(Entropy, Place)> = vec![(into_entropy.into(), place)];
         while !remaining_sets.is_empty() {
             let iter = remaining_sets;
             remaining_sets = Default::default();
@@ -185,19 +186,19 @@ impl EntropyField {
         if let Ok(value) = entropy!(place).to_owned().try_into() {
             for related_block in place.dependencies().into_iter() {
                 for related_place in related_block.into_iter() {
-                    if related_place != place {
-                        if entropy!(related_place).disable(&value).map_err(|err| {
+                    if related_place != place
+                        && entropy!(related_place).disable(&value).map_err(|err| {
                             RuleViolationError {
                                 conflict: err,
                                 place: place.to_owned(),
                             }
-                        })? {
-                            search_uniqueness_around!(&value, &related_place);
+                        })?
+                    {
+                        search_uniqueness_around!(&value, &related_place);
 
-                            // 仮にこの削除によって関係するセルの可能性の数が1つになった場合
-                            if let Ok(value) = entropy!(&related_place).to_owned().try_into() {
-                                remaining_sets.push((value, related_place));
-                            }
+                        // 仮にこの削除によって関係するセルの可能性の数が1つになった場合
+                        if let Ok(value) = entropy!(&related_place).to_owned().try_into() {
+                            remaining_sets.push((value, related_place));
                         }
                     }
                 }

@@ -80,15 +80,15 @@ impl Value {
     }
 }
 
-impl Into<BITS> for Value {
-    fn into(self) -> BITS {
-        self.0.trailing_zeros()
+impl From<Value> for BITS {
+    fn from(val: Value) -> Self {
+        val.0.trailing_zeros()
     }
 }
 
-impl Into<Entropy> for Value {
-    fn into(self) -> Entropy {
-        Entropy(self.0)
+impl From<Value> for Entropy {
+    fn from(val: Value) -> Self {
+        Entropy(val.0)
     }
 }
 
@@ -100,9 +100,9 @@ impl std::fmt::Display for Value {
 
 pub const BITS_LENGTH: usize = std::mem::size_of::<BITS>();
 
-impl Into<[u8; BITS_LENGTH]> for Value {
-    fn into(self) -> [u8; BITS_LENGTH] {
-        unsafe { std::mem::transmute(self.0) }
+impl From<Value> for [u8; BITS_LENGTH] {
+    fn from(val: Value) -> Self {
+        val.0.to_ne_bytes()
     }
 }
 
@@ -121,6 +121,9 @@ pub struct ValueIter(BITS);
 impl ValueIter {
     pub fn len(&self) -> BITS {
         self.0.count_ones()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0 == 0
     }
 }
 
@@ -151,6 +154,11 @@ impl Entropy {
     /// エントロピーの大きさを返します。
     pub fn len(&self) -> BITS {
         self.0.count_ones()
+    }
+
+    /// エントロピーが空かどうかを返します。
+    pub fn is_empty(&self) -> bool {
+        self.0 == 0
     }
 
     /// その値になる可能性があるかどうかを返します。
@@ -229,6 +237,12 @@ impl TryInto<Value> for Entropy {
     }
 }
 
+impl From<Entropy> for BITS {
+    fn from(val: Entropy) -> Self {
+        val.0
+    }
+}
+
 impl IntoIterator for Entropy {
     type Item = Value;
     type IntoIter = ValueIter;
@@ -237,9 +251,9 @@ impl IntoIterator for Entropy {
     }
 }
 
-impl Into<[u8; BITS_LENGTH]> for Entropy {
-    fn into(self) -> [u8; BITS_LENGTH] {
-        unsafe { std::mem::transmute(self.0) }
+impl From<Entropy> for [u8; BITS_LENGTH] {
+    fn from(val: Entropy) -> Self {
+        val.0.to_ne_bytes()
     }
 }
 

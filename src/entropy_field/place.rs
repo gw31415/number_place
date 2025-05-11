@@ -32,11 +32,7 @@ impl Place {
     /// 新しいPlaceを返します。
     /// そのインデックスの値が範囲外であればNoneが返ります。。
     pub const fn new_from_raw(i: usize) -> Option<Place> {
-        if i < 81 {
-            Some(Place(i))
-        } else {
-            None
-        }
+        if i < 81 { Some(Place(i)) } else { None }
     }
     /// 新しいPlaceを返します。
     /// そのインデックスの値が範囲内にあるかどうかの確認をしません。
@@ -44,7 +40,7 @@ impl Place {
         Place(i)
     }
     /// そのPlaceに直接的に影響のあるPlaceを返します。
-    pub fn dependencies<'a>(&'a self) -> Dependencies<'a> {
+    pub fn dependencies(&self) -> Dependencies<'_> {
         Dependencies(self)
     }
 }
@@ -62,15 +58,15 @@ pub struct Dependencies<'a>(&'a Place);
 impl Dependencies<'_> {
     /// 何のPlaceに関するDependenciesかを返します。
     pub fn about(&self) -> &Place {
-        &self.0
+        self.0
     }
     /// 横の1行のラインの依存セルを返します。
     pub fn x_line(&self) -> block::Block {
-        unsafe { block::Block::new_unchecked(self.0 .0 / 9 * 9, block::BlockType::XLine) }
+        unsafe { block::Block::new_unchecked(self.0.0 / 9 * 9, block::BlockType::XLine) }
     }
     /// 縦の1列のラインの依存セルを返します。
     pub fn y_line(&self) -> block::Block {
-        unsafe { block::Block::new_unchecked(self.0 .0 % 9, block::BlockType::YLine) }
+        unsafe { block::Block::new_unchecked(self.0.0 % 9, block::BlockType::YLine) }
     }
     /// 3x3の領域の依存セルを返します。
     pub fn square(&self) -> block::Block {

@@ -14,7 +14,7 @@ fn main() {
         for x in 0..9 {
             let c = line[x];
             char_count += 1;
-            if c > b'9' || c < b'1' {
+            if !(b'1'..=b'9').contains(&c) {
                 continue;
             }
             use std::io::Write;
