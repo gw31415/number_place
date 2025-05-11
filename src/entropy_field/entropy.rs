@@ -261,6 +261,13 @@ impl TryFrom<[u8; BITS_LENGTH]> for Entropy {
     type Error = ();
     fn try_from(value: [u8; BITS_LENGTH]) -> Result<Self, Self::Error> {
         let value: BITS = unsafe { std::mem::transmute(value) };
+        TryFrom::<BITS>::try_from(value)
+    }
+}
+
+impl TryFrom<BITS> for Entropy {
+    type Error = ();
+    fn try_from(value: BITS) -> Result<Self, Self::Error> {
         if value != value & MASK {
             Err(())
         } else {
